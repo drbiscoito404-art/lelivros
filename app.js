@@ -10,8 +10,12 @@ const sampleBooks = [
 ];
 const $ = (selector, root = document) => root.querySelector(selector);
 const state = { category: "Todos", query: "", sort: "popular", books: [], user: null, font: 18 };
+const BOOK_ASSET_BUCKET = "lelivros-books";
 let authMode = "signIn";
 let supabaseClient = null;
+let activeEpubBook = null;
+let activeEpubRendition = null;
+let epubLoadToken = 0;
 
 function setNotice(message, tone = "info") {
   const notice = $("#serviceStatus");
@@ -34,8 +38,17 @@ function allBooks() {
   return [...state.books, ...sampleBooks];
 }
 
+function publicAssetUrl(path) {
+  if (!supabaseClient || !path) return null;
+  return supabaseClient.storage.from(BOOK_ASSET_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
 function card(book) {
-  return `<article class="book-card" data-id="${escapeHTML(book.id)}" tabindex="0" role="button" aria-label="Ler ${escapeHTML(book.title)}"><div class="cover cover-${book.cover || 1}"><span class="cover-label">LELIVROS • ${escapeHTML(book.genre)}</span><strong>${escapeHTML(book.title)}</strong><small>${escapeHTML(book.author)}</small></div><div class="book-meta"><p class="book-genre">${escapeHTML(book.genre)}</p><h3>${escapeHTML(book.title)}</h3><p>${escapeHTML(book.author)}</p></div></article>`;
+  const coverUrl = publicAssetUrl(book.cover_path);
+  const coverImage = coverUrl
+    ? `<img class="book-cover-image" src="${escapeHTML(coverUrl)}" alt="" loading="lazy">`
+    : "";
+  return `<article class="book-card" data-id="${escapeHTML(book.id)}" tabindex="0" role="button" aria-label="Ler ${escapeHTML(book.title)}"><div class="cover cover-${book.cover || 1}">${coverImage}<span class="cover-label">LELIVROS • ${escapeHTML(book.genre)}</span><strong>${escapeHTML(book.title)}</strong><small>${escapeHTML(book.author)}</small></div><div class="book-meta"><p class="book-genre">${escapeHTML(book.genre)}</p><h3>${escapeHTML(book.title)}</h3><p>${escapeHTML(book.author)}</p></div></article>`;
 }
 
 function filteredBooks() {
@@ -70,20 +83,97 @@ function setCategory(category) {
 function openReader(id) {
   const book = allBooks().find(item => item.id === id);
   if (!book) return;
+  disposeEpubReader();
   $("#homeView").classList.add("hidden");
   $("#readerView").classList.remove("hidden");
   $("#readerTitle").textContent = book.title;
   $("#readerAuthor").textContent = `por ${book.author}`;
   $("#readerGenre").textContent = book.genre.toUpperCase();
-  $("#readerBody").innerHTML = book.content.split(/\n\s*\n/).map(paragraph =>
+  $("#readingProgress").style.width = "0%";
+  $("#readerEnd").classList.toggle("hidden", Boolean(book.book_path));
+  $("#readerBody").classList.toggle("hidden", Boolean(book.book_path));
+  $("#bookFileReader").classList.toggle("hidden", !book.book_path);
+  $("#pdfReader").classList.add("hidden");
+  $("#epubReader").classList.add("hidden");
+  $("#epubPrevious").classList.add("hidden");
+  $("#epubNext").classList.add("hidden");
+  $("#readerBody").innerHTML = String(book.content || "").split(/\n\s*\n/).map(paragraph =>
     `<p>${escapeHTML(paragraph)}</p>`
   ).join("");
   $("#readerBody").style.fontSize = `${state.font}px`;
-  $("#readingProgress").style.width = "0%";
+  if (book.book_path) {
+    const fileUrl = publicAssetUrl(book.book_path);
+    $("#downloadBook").href = fileUrl || "#";
+    if (!fileUrl) {
+      $("#epubReader").classList.remove("hidden");
+      $("#epubReader").textContent = "Não foi possível localizar o arquivo publicado.";
+    } else if (book.book_format === "pdf") {
+      $("#pdfReader").src = fileUrl;
+      $("#pdfReader").classList.remove("hidden");
+    } else if (book.book_format === "epub") {
+      void renderEpubReader(fileUrl);
+    } else {
+      $("#epubReader").classList.remove("hidden");
+      $("#epubReader").textContent = "Formato de livro desconhecido. Use o link para abrir ou baixar o arquivo.";
+    }
+  }
   window.scrollTo(0, 0);
 }
 
+function disposeEpubReader() {
+  epubLoadToken += 1;
+  if (activeEpubBook) {
+    try {
+      const result = activeEpubBook.destroy();
+      if (result?.catch) result.catch(error => console.error("Falha ao encerrar o leitor EPUB:", error));
+    } catch (error) {
+      console.error("Falha ao encerrar o leitor EPUB:", error);
+    }
+    activeEpubBook = null;
+    activeEpubRendition = null;
+  }
+  $("#epubReader").replaceChildren();
+}
+
+async function renderEpubReader(fileUrl) {
+  const container = $("#epubReader");
+  const loadToken = ++epubLoadToken;
+  container.classList.remove("hidden");
+  if (typeof window.ePub !== "function") {
+    container.textContent = "O leitor EPUB não carregou. Use o link abaixo para abrir ou baixar o arquivo.";
+    return;
+  }
+  try {
+    const response = await fetch(fileUrl);
+    if (!response.ok) throw new Error(`O arquivo EPUB respondeu com HTTP ${response.status}.`);
+    const book = window.ePub();
+    book.open(await response.arrayBuffer(), "binary");
+    await book.opened;
+    if (loadToken !== epubLoadToken) {
+      book.destroy();
+      return;
+    }
+    activeEpubBook = book;
+    activeEpubRendition = activeEpubBook.renderTo(container, {
+      width: "100%",
+      height: "100%",
+      spread: "auto",
+      allowScriptedContent: false
+    });
+    await activeEpubRendition.display();
+    if (loadToken !== epubLoadToken) return;
+    $("#epubPrevious").classList.remove("hidden");
+    $("#epubNext").classList.remove("hidden");
+  } catch (error) {
+    console.error("Falha ao abrir o EPUB:", error);
+    container.textContent = "Não foi possível abrir o EPUB neste navegador. Use o link abaixo para baixar o arquivo.";
+    setNotice(`Falha ao abrir o EPUB: ${error.message || "erro desconhecido"}`, "error");
+  }
+}
+
 function closeReader() {
+  disposeEpubReader();
+  $("#pdfReader").removeAttribute("src");
   $("#readerView").classList.add("hidden");
   $("#homeView").classList.remove("hidden");
   window.scrollTo(0, 0);
@@ -150,7 +240,7 @@ function renderAuthorPanel() {
   $("#statBooks").textContent = mine.length;
   $("#statReads").textContent = mine.reduce((total, book) => total + (book.reads || 0), 0);
   $("#authorBooks").innerHTML = mine.length
-    ? mine.map(book => `<div class="author-book-item"><div><strong>${escapeHTML(book.title)}</strong><span>${escapeHTML(book.genre)} · Publicado na biblioteca</span></div><button data-delete="${escapeHTML(book.id)}">Excluir</button></div>`).join("")
+    ? mine.map(book => `<div class="author-book-item"><div><strong>${escapeHTML(book.title)}</strong><span>${escapeHTML(book.genre)} · ${book.book_path ? `Arquivo ${escapeHTML((book.book_format || "livro").toUpperCase())}` : "Publicado na biblioteca"}</span></div><button data-delete="${escapeHTML(book.id)}">Excluir</button></div>`).join("")
     : '<p class="empty-author-books">Você ainda não publicou nenhum livro.</p>';
 }
 
@@ -192,12 +282,36 @@ function friendlyAuthError(error) {
   return "Não foi possível concluir agora. Verifique os dados e tente novamente.";
 }
 
+function uploadFailureMessage(error) {
+  const message = error?.message || String(error);
+  if (message.toLowerCase().includes("bucket not found")) {
+    return "O armazenamento ainda não foi configurado. Execute a migração de arquivos no Supabase e tente novamente.";
+  }
+  return `Não foi possível publicar o livro: ${message}`;
+}
+
+async function uploadBookAsset(path, asset) {
+  const { error } = await supabaseClient.storage.from(BOOK_ASSET_BUCKET).upload(path, asset.blob, {
+    contentType: asset.contentType,
+    cacheControl: "31536000",
+    upsert: false
+  });
+  if (error) throw error;
+  return path;
+}
+
+async function removeBookAssets(paths) {
+  if (!paths.length) return null;
+  const { error } = await supabaseClient.storage.from(BOOK_ASSET_BUCKET).remove(paths);
+  return error;
+}
+
 async function loadBooks() {
   if (!supabaseClient) return;
   try {
     const { data, error } = await supabaseClient
       .from("books")
-      .select("id, author_id, title, author, genre, description, content, reads, cover, created_at")
+      .select("id, author_id, title, author, genre, description, content, reads, cover, book_path, book_format, cover_path, created_at")
       .order("created_at", { ascending: false });
     if (error) throw error;
     state.books = data.map(book => ({ ...book, featured: false }));
@@ -206,7 +320,13 @@ async function loadBooks() {
     clearNotice();
   } catch (error) {
     console.error("Falha ao carregar os livros:", error);
-    setNotice("Não foi possível atualizar a biblioteca online. Os livros de exemplo continuam disponíveis.", "error");
+    const message = error?.message || "";
+    if ((error?.code === "42703" || error?.code === "PGRST204") &&
+        /book_path|book_format|cover_path/i.test(message)) {
+      setNotice("O banco ainda não foi atualizado para arquivos. Execute a migração 20261106000000_add_book_file_storage.sql no Supabase.", "warning");
+    } else {
+      setNotice("Não foi possível atualizar a biblioteca online. Os livros de exemplo continuam disponíveis.", "error");
+    }
   }
 }
 
@@ -334,29 +454,102 @@ $("#bookForm").addEventListener("submit", async event => {
     openAuthModal();
     return;
   }
-  const form = new FormData(event.currentTarget);
-  const button = event.currentTarget.querySelector('[type="submit"]');
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
+  const button = formElement.querySelector('[type="submit"]');
+  const status = $("#bookUploadStatus");
+  const bookFile = form.get("bookFile");
+  const coverFile = form.get("coverFile");
+  const content = String(form.get("content") || "").trim();
+  const selectedBookFile = bookFile?.name ? bookFile : null;
+  const selectedCoverFile = coverFile?.name ? coverFile : null;
+  const uploadedPaths = [];
+  const warnings = [];
+  let published = false;
   button.disabled = true;
   try {
+    if (selectedBookFile && content) throw new Error("Escolha entre enviar um arquivo de livro ou publicar texto; não use os dois.");
+    if (!selectedBookFile && !content) throw new Error("Informe o texto de leitura ou selecione um arquivo de livro.");
+    if ((selectedBookFile || selectedCoverFile) && !window.LelivrosUploads) {
+      throw new Error("Os conversores não carregaram. Atualize a página e tente novamente.");
+    }
+
+    const title = String(form.get("title")).trim();
+    const author = String(form.get("author")).trim();
+    let preparedBook = null;
+    let preparedCover = null;
+    if (selectedBookFile) {
+      status.textContent = "Validando e otimizando o arquivo do livro…";
+      status.classList.remove("hidden");
+      preparedBook = await window.LelivrosUploads.prepareBookFile(selectedBookFile, { title, author });
+      warnings.push(...preparedBook.warnings);
+    }
+    if (selectedCoverFile) {
+      status.textContent = "Convertendo e reduzindo a imagem da capa…";
+      status.classList.remove("hidden");
+      preparedCover = await window.LelivrosUploads.prepareCoverFile(selectedCoverFile);
+      warnings.push(...preparedCover.warnings);
+    }
+
+    const assetFolder = selectedBookFile || selectedCoverFile
+      ? `${state.user.id}/${crypto.randomUUID()}`
+      : null;
+    let bookPath = null;
+    let coverPath = null;
+    if (preparedBook) {
+      status.textContent = "Enviando o arquivo do livro…";
+      bookPath = await uploadBookAsset(`${assetFolder}/book.${preparedBook.extension}`, preparedBook);
+      uploadedPaths.push(bookPath);
+    }
+    if (preparedCover) {
+      status.textContent = "Enviando a capa…";
+      coverPath = await uploadBookAsset(`${assetFolder}/cover.${preparedCover.extension}`, preparedCover);
+      uploadedPaths.push(coverPath);
+    }
+
     const { data, error } = await supabaseClient.from("books").insert({
       author_id: state.user.id,
-      title: String(form.get("title")).trim(),
-      author: String(form.get("author")).trim(),
+      title,
+      author,
       genre: form.get("genre"),
       description: String(form.get("description")).trim(),
-      content: String(form.get("content")).trim(),
-      cover: (state.books.length % 8) + 1
-    }).select("id, author_id, title, author, genre, description, content, reads, cover, created_at").single();
+      content: preparedBook ? null : content,
+      cover: (state.books.length % 8) + 1,
+      book_path: bookPath,
+      book_format: preparedBook?.format || null,
+      cover_path: coverPath
+    }).select("id, author_id, title, author, genre, description, content, reads, cover, book_path, book_format, cover_path, created_at").single();
     if (error) throw error;
+    published = true;
     state.books.unshift({ ...data, featured: false });
-    event.currentTarget.reset();
+    formElement.reset();
+    status.classList.add("hidden");
     closeBookModal();
     renderBooks();
     openDrawer();
-    setNotice("Livro publicado e salvo na biblioteca online.", "success");
+    setNotice(
+      warnings.length
+        ? `Livro publicado. ${warnings.join(" ")}`
+        : "Livro publicado e salvo na biblioteca online.",
+      warnings.length ? "warning" : "success"
+    );
   } catch (error) {
     console.error("Falha ao publicar o livro:", error);
-    setNotice("Não foi possível publicar o livro. Confira sua conexão e tente novamente.", "error");
+    let cleanupMessage = "";
+    if (!published && uploadedPaths.length) {
+      try {
+        const cleanupError = await removeBookAssets(uploadedPaths);
+        if (cleanupError) {
+          console.error("Falha ao remover arquivos temporários:", cleanupError);
+          cleanupMessage = ` Os arquivos temporários não puderam ser removidos: ${cleanupError.message || "erro desconhecido"}.`;
+        }
+      } catch (cleanupError) {
+        console.error("Falha ao remover arquivos temporários:", cleanupError);
+        cleanupMessage = ` Os arquivos temporários não puderam ser removidos: ${cleanupError.message || "erro desconhecido"}.`;
+      }
+    }
+    status.classList.add("hidden");
+    setNotice(`${uploadFailureMessage(error)}${cleanupMessage}`, "error");
   } finally {
     button.disabled = false;
   }
@@ -364,6 +557,8 @@ $("#bookForm").addEventListener("submit", async event => {
 $("#authorBooks").addEventListener("click", async event => {
   const button = event.target.closest("[data-delete]");
   if (!button || !state.user || !window.confirm("Excluir este livro da biblioteca?")) return;
+  const book = state.books.find(item => item.id === button.dataset.delete);
+  const assetPaths = [book?.book_path, book?.cover_path].filter(Boolean);
   button.disabled = true;
   try {
     const { data, error } = await supabaseClient.from("books")
@@ -376,11 +571,23 @@ $("#authorBooks").addEventListener("click", async event => {
     state.books = state.books.filter(book => book.id !== data.id);
     renderAuthorPanel();
     renderBooks();
-    setNotice("Livro excluído da biblioteca.", "success");
   } catch (error) {
     console.error("Falha ao excluir o livro:", error);
-    setNotice("Não foi possível excluir o livro. Atualize a página e tente novamente.", "error");
+    setNotice(`Não foi possível excluir o livro: ${error.message || "erro desconhecido"}`, "error");
     button.disabled = false;
+    return;
+  }
+  try {
+    const cleanupError = await removeBookAssets(assetPaths);
+    if (cleanupError) {
+      console.error("Livro excluído, mas falhou a remoção dos arquivos:", cleanupError);
+      setNotice(`Livro excluído, mas os arquivos não puderam ser removidos: ${cleanupError.message || "erro desconhecido"}`, "error");
+      return;
+    }
+    setNotice("Livro e arquivos excluídos da biblioteca.", "success");
+  } catch (error) {
+    console.error("Livro excluído, mas falhou a remoção dos arquivos:", error);
+    setNotice(`Livro excluído, mas os arquivos não puderam ser removidos: ${error.message || "erro desconhecido"}`, "error");
   }
 });
 $("#signOutButton").onclick = async () => {
@@ -396,6 +603,24 @@ $("#signOutButton").onclick = async () => {
 };
 $("#backToCatalog").onclick = closeReader;
 $("#readerBackButton").onclick = closeReader;
+$("#epubPrevious").onclick = async () => {
+  if (!activeEpubRendition) return;
+  try {
+    await activeEpubRendition.prev();
+  } catch (error) {
+    console.error("Falha ao voltar no EPUB:", error);
+    setNotice(`Não foi possível voltar no EPUB: ${error.message || "erro desconhecido"}`, "error");
+  }
+};
+$("#epubNext").onclick = async () => {
+  if (!activeEpubRendition) return;
+  try {
+    await activeEpubRendition.next();
+  } catch (error) {
+    console.error("Falha ao avançar no EPUB:", error);
+    setNotice(`Não foi possível avançar no EPUB: ${error.message || "erro desconhecido"}`, "error");
+  }
+};
 $("#fontDown").onclick = () => {
   state.font = Math.max(14, state.font - 1);
   $("#readerBody").style.fontSize = `${state.font}px`;

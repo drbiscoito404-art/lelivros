@@ -29,9 +29,9 @@ jobs:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
-          node -e "const fs=require('fs');const url=process.env.SUPABASE_URL;const key=process.env.SUPABASE_ANON_KEY;if(!url||!key)throw new Error('Configure as variáveis SUPABASE_URL e SUPABASE_ANON_KEY no repositório.');fs.writeFileSync('config.js','window.LELIVROS_CONFIG = '+JSON.stringify({supabaseUrl:url,supabaseAnonKey:key})+';');"
+          node -e "const fs=require('fs');const url=process.env.SUPABASE_URL;const key=process.env.SUPABASE_ANON_KEY;if(Boolean(url)!==Boolean(key))throw new Error('Configure ambas as variáveis SUPABASE_URL e SUPABASE_ANON_KEY.');if(url&&key)fs.writeFileSync('config.js','window.LELIVROS_CONFIG = '+JSON.stringify({supabaseUrl:url,supabaseAnonKey:key})+';');if(!fs.existsSync('config.js'))throw new Error('Configure as variáveis do Supabase ou adicione config.js.');"
           mkdir dist
-          cp index.html app.js style.css auth.css config.js dist/
+          cp index.html app.js uploads.js style.css auth.css uploads.css config.js dist/
 
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5

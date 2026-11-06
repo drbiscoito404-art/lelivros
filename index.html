@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="auth.css">
+  <link rel="stylesheet" href="uploads.css">
 </head>
 <body>
   <header class="topbar">
@@ -93,7 +94,16 @@
     <article class="reader-content">
       <span class="eyebrow" id="readerGenre">LEITURA</span><h1 id="readerTitle"></h1><p class="reader-byline" id="readerAuthor"></p>
       <div class="reader-body" id="readerBody"></div>
-      <div class="reader-end"><span>✦</span><p>Você chegou ao fim desta amostra.</p><button class="primary-button" id="readerBackButton">Voltar aos livros</button></div>
+      <div id="bookFileReader" class="book-file-reader hidden">
+        <iframe id="pdfReader" class="hidden" title="Leitor de PDF"></iframe>
+        <div id="epubReader" class="hidden" aria-label="Leitor de EPUB"></div>
+        <div class="file-reader-actions">
+          <button type="button" class="text-button hidden" id="epubPrevious">← Página anterior</button>
+          <button type="button" class="text-button hidden" id="epubNext">Próxima página →</button>
+          <a class="text-button" id="downloadBook" target="_blank" rel="noopener noreferrer">Abrir ou baixar arquivo</a>
+        </div>
+      </div>
+      <div class="reader-end" id="readerEnd"><span>✦</span><p>Você chegou ao fim desta amostra.</p><button class="primary-button" id="readerBackButton">Voltar aos livros</button></div>
     </article>
   </section>
 
@@ -140,8 +150,20 @@
         <label>Nome do autor<input name="author" required maxlength="50" placeholder="Como os leitores vão conhecer você?"></label>
         <label>Gênero<select name="genre"><option>Romance</option><option>Fantasia</option><option>Ficção científica</option><option>Mistério</option><option>Terror</option><option>Aventura</option><option>Desenvolvimento pessoal</option></select></label>
         <label>Sinopse<textarea name="description" required maxlength="500" rows="3" placeholder="Conte um pouco sobre sua história..."></textarea></label>
-        <label>Primeiro capítulo<textarea name="content" required maxlength="50000" rows="6" placeholder="Era uma vez..."></textarea></label>
-        <button class="primary-button full-button" type="submit">Salvar livro <span>→</span></button>
+        <label>Arquivo do livro (opcional)
+          <input name="bookFile" type="file" accept=".pdf,.epub,.txt,.md,.docx,application/pdf,application/epub+zip,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+          <small>PDF, EPUB, TXT, MD ou DOCX · até 20 MB. TXT/MD e DOCX são convertidos para EPUB; PDF e EPUB são otimizados sem perda quando possível.</small>
+        </label>
+        <label>Capa (opcional)
+          <input name="coverFile" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+          <small>PNG, JPG ou WebP · até 12 MB. A imagem é reduzida e convertida para WebP quando isso economiza espaço.</small>
+        </label>
+        <label>Texto de leitura ou amostra
+          <textarea name="content" maxlength="50000" rows="6" placeholder="Cole uma amostra ou capítulo. Informe texto ou envie um arquivo de livro."></textarea>
+          <small>Use texto ou arquivo, não os dois. Sem arquivo, o texto publicado fica disponível para leitura no site.</small>
+        </label>
+        <p id="bookUploadStatus" class="upload-status hidden" role="status" aria-live="polite"></p>
+        <button class="primary-button full-button" type="submit">Publicar livro <span>→</span></button>
       </form>
     </section>
   </div>
@@ -149,6 +171,11 @@
   <footer><a class="brand footer-brand" href="#"><span class="brand-mark">L</span><span>LE<span class="brand-accent">LIVROS</span></span></a><p>Histórias conectam mundos. Encontre a sua próxima.</p><span>© 2026 LocalPulse · LeLivros</span></footer>
   <script src="config.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.9.0/mammoth.browser.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js" defer></script>
+  <script src="uploads.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>
