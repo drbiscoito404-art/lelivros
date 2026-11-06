@@ -636,13 +636,18 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 $("#mobileSearch").onclick = () => {
   const search = $("#searchInput");
-  search.classList.toggle("mobile-open");
-  if (search.classList.contains("mobile-open")) search.focus();
+  const searchWrap = search.closest(".search-wrap");
+  const isOpen = searchWrap.classList.toggle("mobile-open");
+  $("#mobileSearch").setAttribute("aria-label", isOpen ? "Fechar pesquisa" : "Abrir pesquisa");
+  $("#mobileSearch").setAttribute("aria-expanded", String(isOpen));
+  if (isOpen) search.focus();
 };
 document.addEventListener("keydown", event => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
     event.preventDefault();
-    $("#searchInput").classList.add("mobile-open");
+    $("#searchInput").closest(".search-wrap").classList.add("mobile-open");
+    $("#mobileSearch").setAttribute("aria-label", "Fechar pesquisa");
+    $("#mobileSearch").setAttribute("aria-expanded", "true");
     $("#searchInput").focus();
   }
 });
