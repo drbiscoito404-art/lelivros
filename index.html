@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#17191f">
+  <meta name="description" content="Descubra histórias, leia online e publique seus próprios livros.">
+  <title>LocalPulse — LeLivros</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="LeLivros início"><span class="brand-mark">L</span><span>LE<span class="brand-accent">LIVROS</span></span></a>
+    <label class="search-wrap" aria-label="Pesquisar livros">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 5 5"></path></svg>
+      <input id="searchInput" type="search" placeholder="Busque por título, autor ou gênero..." autocomplete="off">
+      <kbd>⌘ K</kbd>
+    </label>
+    <nav class="main-nav" aria-label="Navegação principal">
+      <a href="#catalogo">Explorar</a><a href="#destaques">Destaques</a>
+      <button class="nav-author" id="authorButton">Entrar</button>
+      <button class="mobile-search" id="mobileSearch" aria-label="Abrir pesquisa">⌕</button>
+    </nav>
+  </header>
+  <div id="serviceStatus" class="service-status hidden" role="status" aria-live="polite"></div>
+
+  <main id="homeView">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow"><i></i> UM UNIVERSO DE HISTÓRIAS</span>
+        <h1>Uma boa história<br>muda <em>tudo.</em></h1>
+        <p>Encontre sua próxima leitura, descubra novos autores e compartilhe histórias que merecem ser lidas.</p>
+        <a class="primary-link" href="#catalogo">Explorar biblioteca <span>→</span></a>
+      </div>
+      <div class="hero-art" aria-label="Livros em destaque">
+        <div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div>
+        <div class="hero-book book-back"><span>O PESO<br>DO TEMPO</span><small>UMA HISTÓRIA SOBRE RECOMEÇOS</small></div>
+        <div class="hero-book book-front"><span>ENTRE<br>LINHAS</span><small>ALGUMAS HISTÓRIAS FICAM</small></div>
+        <div class="hero-note">LEIA. IMAGINE. VIVA.</div>
+      </div>
+    </section>
+
+    <section class="category-section" aria-label="Categorias">
+      <div class="section-heading compact"><div><span class="eyebrow">ENCONTRE SEU GÊNERO</span><h2>O que você quer ler?</h2></div></div>
+      <div class="category-list" id="categoryList">
+        <button class="category-chip active" data-category="Todos">Todos</button>
+        <button class="category-chip" data-category="Romance">Romance</button>
+        <button class="category-chip" data-category="Fantasia">Fantasia</button>
+        <button class="category-chip" data-category="Ficção científica">Ficção científica</button>
+        <button class="category-chip" data-category="Mistério">Mistério</button>
+        <button class="category-chip" data-category="Terror">Terror</button>
+        <button class="category-chip" data-category="Aventura">Aventura</button>
+        <button class="category-chip" data-category="Desenvolvimento pessoal">Desenvolvimento pessoal</button>
+      </div>
+    </section>
+
+    <section class="catalog-section" id="destaques">
+      <div class="section-heading">
+        <div><span class="eyebrow">SELEÇÃO DA COMUNIDADE</span><h2>Em destaque</h2><p>Histórias que estão chamando atenção.</p></div>
+        <a href="#catalogo" class="subtle-link">Ver biblioteca <span>→</span></a>
+      </div>
+      <div class="featured-grid" id="featuredGrid"></div>
+    </section>
+
+    <section class="catalog-section all-books" id="catalogo">
+      <div class="section-heading">
+        <div><span class="eyebrow">SUA PRÓXIMA LEITURA</span><h2>Explore a biblioteca</h2><p id="resultCount">Descubra livros e novos autores.</p></div>
+        <select id="sortSelect" class="sort-select" aria-label="Ordenar livros">
+          <option value="popular">Mais populares</option><option value="recent">Adicionados recentemente</option><option value="title">Ordem alfabética</option>
+        </select>
+      </div>
+      <div class="book-grid" id="bookGrid"></div>
+      <div class="empty-state hidden" id="emptyState"><span>⌕</span><h3>Nenhum livro encontrado</h3><p>Tente outro título, autor ou categoria.</p><button class="text-button" id="clearFilters">Limpar filtros</button></div>
+    </section>
+
+    <section class="author-banner">
+      <div><span class="eyebrow">SUA HISTÓRIA MERECE SER LIDA</span><h2>O próximo autor que vai<br>marcar alguém pode ser você.</h2><p>Transforme suas ideias em livros e encontre leitores para suas histórias.</p></div>
+      <button class="light-button" id="bannerAuthorButton">Começar a publicar <span>→</span></button>
+      <div class="banner-decoration">Aa</div>
+    </section>
+  </main>
+
+  <section class="reader-view hidden" id="readerView">
+    <div class="reader-top">
+      <button class="back-button" id="backToCatalog">← <span>Voltar à biblioteca</span></button>
+      <div class="reader-controls"><button id="fontDown" aria-label="Diminuir fonte">A−</button><button id="fontUp" aria-label="Aumentar fonte">A+</button></div>
+    </div>
+    <div class="reading-progress"><span id="readingProgress"></span></div>
+    <article class="reader-content">
+      <span class="eyebrow" id="readerGenre">LEITURA</span><h1 id="readerTitle"></h1><p class="reader-byline" id="readerAuthor"></p>
+      <div class="reader-body" id="readerBody"></div>
+      <div class="reader-end"><span>✦</span><p>Você chegou ao fim desta amostra.</p><button class="primary-button" id="readerBackButton">Voltar aos livros</button></div>
+    </article>
+  </section>
+
+  <div class="overlay hidden" id="modalOverlay">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="closeModal" aria-label="Fechar">×</button>
+      <div class="modal-icon">✍</div><span class="eyebrow">SUA CONTA LOCALPULSE</span>
+      <h2 id="modalTitle">Entre para publicar.</h2>
+      <p id="authDescription">Entre na sua conta ou crie uma gratuitamente para publicar e gerenciar seus livros.</p>
+      <p id="authUnavailable" class="auth-message hidden" role="status"></p>
+      <form id="authForm" class="auth-form">
+        <label id="authEmailLabel" for="authEmail">E-mail</label>
+        <input id="authEmail" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="voce@exemplo.com">
+        <label id="authPasswordLabel" for="authPassword">Senha</label>
+        <input id="authPassword" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" placeholder="Pelo menos 8 caracteres">
+        <p id="authMessage" class="auth-message hidden" role="status" aria-live="polite"></p>
+        <button class="primary-button full-button" id="authSubmit" type="submit">Entrar</button>
+        <div class="auth-links">
+          <button type="button" class="text-button" id="authToggle">Criar conta</button>
+          <button type="button" class="text-button" id="forgotPassword">Esqueci minha senha</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <aside class="author-drawer" id="authorDrawer" aria-label="Painel do autor" aria-hidden="true">
+    <div class="drawer-header"><div><span class="eyebrow">ÁREA DE CRIAÇÃO</span><h2>Painel do autor</h2></div><button id="closeDrawer" class="modal-close" aria-label="Fechar painel">×</button></div>
+    <div class="author-welcome"><div class="avatar">A</div><div><strong id="authorName">Meu espaço de autor</strong><span>Bem-vindo à sua biblioteca criativa</span></div></div>
+    <div class="stats-row"><div><strong id="statBooks">0</strong><span>Livros</span></div><div><strong id="statReads">0</strong><span>Leituras</span></div><div><strong>—</strong><span>Avaliação</span></div></div>
+    <button class="primary-button full-button" id="newBookButton">＋ Criar novo livro</button>
+    <button class="text-button signout-button" id="signOutButton">Sair da conta</button>
+    <div class="drawer-section-title"><h3>Meus livros</h3><span>RASCUNHOS E PUBLICAÇÕES</span></div>
+    <div id="authorBooks" class="author-books"></div>
+    <p class="drawer-note">Seus livros publicados ficam salvos na biblioteca online.</p>
+  </aside>
+  <div class="drawer-scrim hidden" id="drawerScrim"></div>
+
+  <div class="overlay hidden" id="bookModalOverlay">
+    <section class="modal book-modal" role="dialog" aria-modal="true" aria-labelledby="bookModalTitle">
+      <button class="modal-close" id="closeBookModal" aria-label="Fechar">×</button>
+      <span class="eyebrow">NOVA PUBLICAÇÃO</span><h2 id="bookModalTitle">Dê vida à sua ideia.</h2>
+      <form id="bookForm">
+        <label>Título do livro<input name="title" required maxlength="70" placeholder="Ex.: O outro lado do céu"></label>
+        <label>Nome do autor<input name="author" required maxlength="50" placeholder="Como os leitores vão conhecer você?"></label>
+        <label>Gênero<select name="genre"><option>Romance</option><option>Fantasia</option><option>Ficção científica</option><option>Mistério</option><option>Terror</option><option>Aventura</option><option>Desenvolvimento pessoal</option></select></label>
+        <label>Sinopse<textarea name="description" required maxlength="500" rows="3" placeholder="Conte um pouco sobre sua história..."></textarea></label>
+        <label>Primeiro capítulo<textarea name="content" required maxlength="50000" rows="6" placeholder="Era uma vez..."></textarea></label>
+        <button class="primary-button full-button" type="submit">Salvar livro <span>→</span></button>
+      </form>
+    </section>
+  </div>
+
+  <footer><a class="brand footer-brand" href="#"><span class="brand-mark">L</span><span>LE<span class="brand-accent">LIVROS</span></span></a><p>Histórias conectam mundos. Encontre a sua próxima.</p><span>© 2026 LocalPulse · LeLivros</span></footer>
+  <script src="config.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

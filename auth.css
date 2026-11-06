@@ -1,0 +1,20 @@
+.service-status{max-width:1240px;margin:12px auto 0;padding:12px 18px;border-radius:8px;font-size:13px;line-height:1.5}
+.service-status[data-tone="warning"]{background:#fff7e2;color:#765500}
+.service-status[data-tone="error"]{background:#fff0ee;color:#8f2d22}
+.service-status[data-tone="success"]{background:#eaf7ed;color:#246334}
+.auth-form{display:grid;gap:10px;margin-top:22px}
+.auth-form label{font-size:12px;font-weight:700;color:#454953}
+.auth-form input{width:100%;padding:12px;border:1px solid #dfe1e7;border-radius:7px;color:#20232b}
+.auth-form input:focus{outline:2px solid #e8bd54;border-color:#c58b08}
+.auth-message{padding:10px 12px;border-radius:7px;font-size:12px;line-height:1.5}
+.auth-message[data-tone="error"]{background:#fff0ee;color:#8f2d22}
+.auth-message[data-tone="success"]{background:#eaf7ed;color:#246334}
+.auth-unavailable{font-size:13px;line-height:1.6}
+.auth-links{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.auth-links .text-button{font-size:12px}
+.auth-form button:disabled,.author-book-item button:disabled{opacity:.6;cursor:wait}
+.signout-button{display:block;margin:12px auto}
+.empty-author-books{font-size:12px;color:#777d88}
+.service-status:not(.hidden){display:block}
+@media(max-width:1280px){.service-status{margin-left:20px;margin-right:20px}}
+@media(max-width:600px){.service-status{margin-left:14px;margin-right:14px}.auth-links{flex-direction:column;align-items:flex-start}}

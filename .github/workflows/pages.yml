@@ -1,0 +1,46 @@
+name: Deploy LeLivros
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build public Supabase configuration
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: |
+          node -e "const fs=require('fs');const url=process.env.SUPABASE_URL;const key=process.env.SUPABASE_ANON_KEY;if(!url||!key)throw new Error('Configure as variáveis SUPABASE_URL e SUPABASE_ANON_KEY no repositório.');fs.writeFileSync('config.js','window.LELIVROS_CONFIG = '+JSON.stringify({supabaseUrl:url,supabaseAnonKey:key})+';');"
+          mkdir dist
+          cp index.html app.js style.css auth.css config.js dist/
+
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4
